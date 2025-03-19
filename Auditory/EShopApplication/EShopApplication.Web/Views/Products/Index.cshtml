@@ -1,0 +1,36 @@
+@model IEnumerable<EShopApplication.Web.Models.Product>
+
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<div class="container">
+    <div class="m-3">
+        <a class="btn btn-success" asp-controller="Products" asp-action="Create">Add new Product</a>
+    </div>
+    
+    <div class="row">
+        
+        @foreach (var item in Model)
+        {
+            <div class="col-md-3 m-4">
+                <div class="card" style="width: 18rem; height: 30rem">
+                    <img class="card-img-top" src="@item.ProductImage" alt="Product Image" style="height: 50%"/>
+                
+                    <div class="card-body">
+                        <h3 class="card-title">@item.ProductName</h3>
+                        <p class="card-text">@item.ProductDescription</p>
+                        <h6 class="card-text">@item.ProductPrice</h6>
+                    </div>
+                
+                    <div class="card-footer">
+                        <a asp-controller="Products" asp-action="AddProductToCart" asp-route-id="@item.Id" class="btn btn-info">Add Product to Cart</a>
+                        <a asp-controller="Products" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-secondary">Edit Product</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
