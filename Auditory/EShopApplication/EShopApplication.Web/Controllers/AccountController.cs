@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using EShopApplication.Web.Models;
-using EShopApplication.Web.Models.DTO;
-using EShopApplication.Web.Models.Identity;
+using EShopApplication.Domain.DomainModels;
+using EShopApplication.Domain.DTO;
+using EShopApplication.Domain.IdentityModels;
 
 namespace EShopApplication.Web.Controllers
 {
@@ -25,99 +25,75 @@ namespace EShopApplication.Web.Controllers
         [HttpGet, AllowAnonymous]
         public IActionResult Register()
         {
-            UserRegistrationDto model = new UserRegistrationDto();
-            return View(model);
+            return View(new UserRegistrationDto());
         }
 
         [HttpPost, AllowAnonymous]
         public async Task<IActionResult> Register(UserRegistrationDto request)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid) return View(request);
+
+            var userCheck = await userManager.FindByEmailAsync(request.Email);
+            if (userCheck != null)
             {
-                var userCheck = await userManager.FindByEmailAsync(request.Email);
-                if (userCheck == null)
-                {
-                    var user = new EShopApplicationUser
-                    {
-                        FirstName = request.FirstName,
-                        LastName = request.LastName,
-                        Address = request.Address,
-                        UserName = request.Email,
-                        NormalizedUserName = request.Email,
-                        Email = request.Email,
-                        PhoneNumber = request.PhoneNumber,
-                        EmailConfirmed = true,
-                        PhoneNumberConfirmed = true,
-                        ShoppingCart = new ShoppingCart()
-                    };
-                    var result = await userManager.CreateAsync(user, request.Password);
-                    if (result.Succeeded)
-                    {
-                        return RedirectToAction("Login");
-                    }
-                    else
-                    {
-                        if (result.Errors.Count() > 0)
-                        {
-                            foreach (var error in result.Errors)
-                            {
-                                ModelState.AddModelError("message", error.Description);
-                            }
-                        }
-                        return View(request);
-                    }
-                }
-                else
-                {
-                    ModelState.AddModelError("message", "Email already exists.");
-                    return View(request);
-                }
+                ModelState.AddModelError("message", "Email already exists.");
+                return View(request);
             }
+
+            var user = new EShopApplicationUser
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Address = request.Address,
+                UserName = request.Email,
+                NormalizedUserName = request.Email.ToUpper(),
+                Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
+                EmailConfirmed = true,
+                PhoneNumberConfirmed = true,
+                ShoppingCart = new ShoppingCart()
+            };
+
+            var result = await userManager.CreateAsync(user, request.Password);
+            if (result.Succeeded)
+            {
+                return RedirectToAction("Login");
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError("message", error.Description);
+            }
+
             return View(request);
         }
-
 
         [HttpGet, AllowAnonymous]
         public IActionResult Login()
         {
-            UserLoginDto model = new UserLoginDto();
-            return View(model);
+            return View(new UserLoginDto());
         }
 
-
-        [HttpPost]
-        [AllowAnonymous]
+        [HttpPost, AllowAnonymous]
         public async Task<IActionResult> Login(UserLoginDto model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid) return View(model);
+
+            var user = await userManager.FindByEmailAsync(model.Email);
+            if (user == null || !await userManager.CheckPasswordAsync(user, model.Password))
             {
-                var user = await userManager.FindByEmailAsync(model.Email);
-                if (user != null && !user.EmailConfirmed)
-                {
-                    ModelState.AddModelError("message", "Email not confirmed yet");
-                    return View(model);
-
-                }
-                if (await userManager.CheckPasswordAsync(user, model.Password) == false)
-                {
-                    ModelState.AddModelError("message", "Invalid credentials");
-                    return View(model);
-
-                }
-
-                var result = await signInManager.PasswordSignInAsync(model.Email, model.Password, true, true);
-
-                if (result.Succeeded)
-                {
-                    await userManager.AddClaimAsync(user, new Claim("UserRole", "Admin"));
-                    return RedirectToAction("Index", "Products");
-                }
-                else
-                {
-                    ModelState.AddModelError("message", "Invalid login attempt");
-                    return View(model);
-                }
+                ModelState.AddModelError("message", "Invalid credentials");
+                return View(model);
             }
+
+            var result = await signInManager.PasswordSignInAsync(user.UserName, model.Password, true, true);
+            if (result.Succeeded)
+            {
+                await userManager.AddClaimAsync(user, new Claim("UserRole", "Admin"));
+                return RedirectToAction("Index", "Products");
+            }
+
+            ModelState.AddModelError("message", "Invalid login attempt");
             return View(model);
         }
 

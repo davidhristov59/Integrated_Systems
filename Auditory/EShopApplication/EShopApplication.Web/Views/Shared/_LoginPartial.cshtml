@@ -1,6 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Identity
-@inject SignInManager<EShopApplication.Web.Models.Identity.EShopApplicationUser> SignInManager
-@inject UserManager<EShopApplication.Web.Models.Identity.EShopApplicationUser> UserManager
+@inject SignInManager<EShopApplication.Domain.IdentityModels.EShopApplicationUser> SignInManager
+@inject UserManager<EShopApplication.Domain.IdentityModels.EShopApplicationUser> UserManager
 
 <ul class="navbar-nav">
     @if (SignInManager.IsSignedIn(User))

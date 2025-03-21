@@ -1,7 +1,16 @@
+using EShopApplication.Domain.IdentityModels;
+using EShopApplication.Repository;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
-using EShopApplication.Web.Data;
-using EShopApplication.Web.Models.Identity;
+using System;
+using EShopApplication.Repository.Implementation;
+using EShopApplication.Repository.Interface;
+using EShopApplication.Services.Implementation;
+using EShopApplication.Services.Interface;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +45,14 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAuthorization(); //dodadeno
 builder.Services.AddControllersWithViews(); //dodadeno
+
+//dodadeno za onion architecture 
+// Add scoped services
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped(typeof(IUserRepository), typeof(UserRepository));
+
+builder.Services.AddTransient<IProductService, ProductService>();
+
 
 var app = builder.Build();
 

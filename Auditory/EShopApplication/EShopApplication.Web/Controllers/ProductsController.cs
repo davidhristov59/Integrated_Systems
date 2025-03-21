@@ -3,36 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using EShopApplication.Domain.DomainModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using EShopApplication.Web.Data;
-using EShopApplication.Web.Models;
-using EShopApplication.Web.Models.DTO;
 using Microsoft.AspNetCore.Authorization;
+using EShopApplication.Domain.DTO;
+using EShopApplication.Repository;
+using EShopApplication.Services.Interface;
 
 namespace EShopApplication.Web.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        // private readonly ApplicationDbContext _context;
+        private readonly IProductService productService;
 
-        public ProductsController(ApplicationDbContext context)
+        public ProductsController(IProductService productService)
         {
-            _context = context;
+            this.productService = productService;
         }
-        
+
         // GET: Products/AddProductToCart
-        public async Task<IActionResult> AddProductToCart(Guid? Id)
+        public IActionResult AddProductToCart(Guid? Id)
         {
-            var product = await _context.Products.Where(p => p.Id.Equals(Id)).FirstOrDefaultAsync();
-            
-            AddProductToShoppingCartDTO model = new AddProductToShoppingCartDTO
-            {
-                selectedProduct = product,
-                ProductID = product.Id,
-                Quantity = 1
-            };
+            var model = productService.GetShoppingCartInfo(Id);
             
             return View(model);
         }
@@ -40,51 +35,44 @@ namespace EShopApplication.Web.Controllers
         // POST: Products/AddProductToCart/id
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize]
-        public async Task<IActionResult> AddProductToCart([Bind("ProductId", "Quantity")] AddProductToShoppingCartDTO model)
+        public IActionResult AddProductToCart(AddProductToShoppingCartDTO model)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); //id-to na najaveniot korisnik
-            
-            var shoppingCartUser = await _context.ShoppingCarts.Where(s => s.OwnerId.Equals(userId)).FirstOrDefaultAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get logged-in user ID
 
-            if (shoppingCartUser != null && model.ProductID != null)
+            if (string.IsNullOrEmpty(userId))
             {
-                var product = await _context.Products.Where(p => p.Id.Equals(model.ProductID)).FirstOrDefaultAsync();
-
-                if (product != null)
-                {
-                    ProductInShoppingCart productInShoppingCart = new ProductInShoppingCart()
-                    {
-                        Product = product,
-                        ProductID = model.ProductID,
-                        ShoppingCart = shoppingCartUser,
-                        ShoppingCartID = shoppingCartUser.Id,
-                        Quantity = model.Quantity
-                    };
-                    _context.ProductInShoppingCarts.Add(productInShoppingCart);
-                    await _context.SaveChangesAsync();
-                }
-                return RedirectToAction("Index", "Products");
+                return RedirectToAction("Login", "Account"); 
             }
+
+            var result = productService.AddToShoppingCart(model, userId);
+
+            if (result)
+            {
+                return RedirectToAction("Index", "Products"); 
+            }
+
             return View(model);
         }
-
+        
         // GET: Products
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            return View(await _context.Products.ToListAsync());
+            var allProducts = productService.GetAllProducts();
+            
+            return View(allProducts);
         }
 
         // GET: Products/Details/5
-        public async Task<IActionResult> Details(Guid? id)
+        public IActionResult Details(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var product = await _context.Products
-                .FirstOrDefaultAsync(m => m.Id == id);
+            // var product =  _context.Products.FirstOrDefaultAsync(m => m.Id == id);
+            var product = productService.GetDetailsForProducts(id);
+            
             if (product == null)
             {
                 return NotFound();
@@ -104,13 +92,12 @@ namespace EShopApplication.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,ProductName,ProductImage,ProductDescription,ProductPrice,Rating")] Product product)
+        public IActionResult Create([Bind("Id,ProductName,ProductImage,ProductDescription,ProductPrice,Rating")] Product product)
         {
             if (ModelState.IsValid)
             {
                 product.Id = Guid.NewGuid();
-                _context.Add(product);
-                await _context.SaveChangesAsync();
+                productService.CreateNewProduct(product);
                 return RedirectToAction(nameof(Index));
             }
     
@@ -118,18 +105,20 @@ namespace EShopApplication.Web.Controllers
         }
 
         // GET: Products/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
+        public IActionResult Edit(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var product = await _context.Products.FindAsync(id);
+            var product = productService.GetDetailsForProducts(id);
+            
             if (product == null)
             {
                 return NotFound();
             }
+            
             return View(product);
         }
 
@@ -138,7 +127,7 @@ namespace EShopApplication.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("Id,ProductName,ProductImage,ProductDescription,ProductPrice,Rating")] Product product)
+        public IActionResult Edit(Guid id, [Bind("Id,ProductName,ProductImage,ProductDescription,ProductPrice,Rating")] Product product)
         {
             if (id != product.Id)
             {
@@ -149,8 +138,7 @@ namespace EShopApplication.Web.Controllers
             {
                 try
                 {
-                    _context.Update(product);
-                    await _context.SaveChangesAsync();
+                    productService.UpdateExistingProduct(product);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -169,15 +157,15 @@ namespace EShopApplication.Web.Controllers
         }
 
         // GET: Products/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
+        public IActionResult Delete(Guid? id)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var product = await _context.Products
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var product = productService.GetDetailsForProducts(id);
+            
             if (product == null)
             {
                 return NotFound();
@@ -189,21 +177,20 @@ namespace EShopApplication.Web.Controllers
         // POST: Products/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
+        public IActionResult DeleteConfirmed(Guid id)
         {
-            var product = await _context.Products.FindAsync(id);
+            var product = productService.GetDetailsForProducts(id);
             if (product != null)
             {
-                _context.Products.Remove(product);
+                productService.DeleteProduct(product);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool ProductExists(Guid id)
         {
-            return _context.Products.Any(e => e.Id == id);
+            return productService.GetDetailsForProducts(id) != null;
         }
     }
 }

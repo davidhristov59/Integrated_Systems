@@ -1,7 +1,8 @@
 using System.Diagnostics;
+using EShopApplication.Domain;
 using Microsoft.AspNetCore.Mvc;
-using EShopApplication.Web.Models;
-
+using Microsoft.Extensions.Logging;
+using EShopApplication.Domain.DomainModels;
 namespace EShopApplication.Web.Controllers;
 
 public class HomeController : Controller
