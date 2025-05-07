@@ -1,12 +1,23 @@
+using System.Linq.Expressions;
 using EShopApplication.Domain.DomainModels;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace EShopApplication.Repository.Interface;
 
 public interface IRepository<T> where T : BaseEntity
 {
-    IEnumerable<T> GetAll();
-    T Get(Guid? id);
-    void Insert(T entity);
-    void Update(T entity);
-    void Delete(T entity);
+    T Insert(T entity);
+    T Update(T entity);
+    T Delete(T entity);
+    
+    E? Get<E>(Expression<Func<T, E>> selector,
+        Expression<Func<T, bool>>? predicate = null, //where
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        Func<IQueryable<T>, IIncludableQueryable<T, object>>? include = null); //eager loading 
+    
+    IEnumerable<E> GetAll<E>(Expression<Func<T, E>> selector,
+        Expression<Func<T, bool>>? predicate = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        Func<IQueryable<T>, IIncludableQueryable<T, object>>? include = null);
+    
 }

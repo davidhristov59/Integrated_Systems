@@ -16,43 +16,33 @@ namespace EShopApplication.Web.Controllers
 {
     public class ProductsController : Controller
     {
-        // private readonly ApplicationDbContext _context;
         private readonly IProductService productService;
+        private readonly IShoppingCartService shoppingCartService;
 
-        public ProductsController(IProductService productService)
+        public ProductsController(IProductService productService, IShoppingCartService shoppingCartService)
         {
             this.productService = productService;
+            this.shoppingCartService = shoppingCartService;
         }
 
         // GET: Products/AddProductToCart
-        public IActionResult AddProductToCart(Guid? Id)
+        public IActionResult AddProductToCart(Guid id)
         {
-            var model = productService.GetShoppingCartInfo(Id);
+            var productDTO = shoppingCartService.GetProductInfo(id);
+
+            return View(productDTO);
+        }
+
+        [HttpPost]
+        public IActionResult AddProductToCart(AddProductToShoppingCartDTO dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             
-            return View(model);
+            productService.AddToShoppingCart(dto.ProductID, Guid.Parse(userId));
+            
+            return RedirectToAction(nameof(Index));
         }
         
-        // POST: Products/AddProductToCart/id
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult AddProductToCart(AddProductToShoppingCartDTO model)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get logged-in user ID
-
-            if (string.IsNullOrEmpty(userId))
-            {
-                return RedirectToAction("Login", "Account"); 
-            }
-
-            var result = productService.AddToShoppingCart(model, userId);
-
-            if (result)
-            {
-                return RedirectToAction("Index", "Products"); 
-            }
-
-            return View(model);
-        }
         
         // GET: Products
         public IActionResult Index()
@@ -70,8 +60,7 @@ namespace EShopApplication.Web.Controllers
                 return NotFound();
             }
 
-            // var product =  _context.Products.FirstOrDefaultAsync(m => m.Id == id);
-            var product = productService.GetDetailsForProducts(id);
+            var product = productService.GetById(id.Value);
             
             if (product == null)
             {
@@ -97,7 +86,7 @@ namespace EShopApplication.Web.Controllers
             if (ModelState.IsValid)
             {
                 product.Id = Guid.NewGuid();
-                productService.CreateNewProduct(product);
+                productService.Add(product);
                 return RedirectToAction(nameof(Index));
             }
     
@@ -112,7 +101,7 @@ namespace EShopApplication.Web.Controllers
                 return NotFound();
             }
 
-            var product = productService.GetDetailsForProducts(id);
+            var product = productService.GetById(id.Value);
             
             if (product == null)
             {
@@ -138,7 +127,7 @@ namespace EShopApplication.Web.Controllers
             {
                 try
                 {
-                    productService.UpdateExistingProduct(product);
+                    productService.Update(product);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -164,7 +153,7 @@ namespace EShopApplication.Web.Controllers
                 return NotFound();
             }
 
-            var product = productService.GetDetailsForProducts(id);
+            var product = productService.GetById(id.Value);
             
             if (product == null)
             {
@@ -179,10 +168,11 @@ namespace EShopApplication.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult DeleteConfirmed(Guid id)
         {
-            var product = productService.GetDetailsForProducts(id);
+            var product = productService.GetById(id);
+            
             if (product != null)
             {
-                productService.DeleteProduct(product);
+                productService.DeleteById(id);
             }
 
             return RedirectToAction(nameof(Index));
@@ -190,7 +180,7 @@ namespace EShopApplication.Web.Controllers
 
         private bool ProductExists(Guid id)
         {
-            return productService.GetDetailsForProducts(id) != null;
+            return productService.GetById(id) != null;
         }
     }
 }

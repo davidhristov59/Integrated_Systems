@@ -1,5 +1,6 @@
 ﻿using EShopApplication.Domain.IdentityModels;
 using EShopApplication.Domain.DomainModels;
+using EShopApplication.Domain.DTO;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 namespace EShopApplication.Repository;
@@ -14,7 +15,9 @@ public class ApplicationDbContext : IdentityDbContext<EShopApplicationUser> //do
     public virtual DbSet<Product> Products { get; set; }
     public virtual DbSet<ShoppingCart> ShoppingCarts { get; set; }
     public virtual DbSet<ProductInShoppingCart> ProductInShoppingCarts { get; set; }
-
+    public virtual DbSet<ProductInOrder> ProductInOrders { get; set; }
+    public virtual DbSet<Order> Orders { get; set; }
+    
     //Fluent API 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -35,7 +38,7 @@ public class ApplicationDbContext : IdentityDbContext<EShopApplicationUser> //do
         //relations
         builder.Entity<ProductInShoppingCart>()
             .HasOne(x => x.Product)
-            .WithMany(x => x.ProductInShoppingCarts)
+            .WithMany(x => x.ProductsInShoppingCarts)
             .HasForeignKey(x => x.ShoppingCartID);
         
         builder.Entity<ProductInShoppingCart>()

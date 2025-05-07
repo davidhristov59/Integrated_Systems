@@ -1,6 +1,8 @@
+using System.Linq.Expressions;
 using EShopApplication.Domain.DomainModels;
 using EShopApplication.Repository.Interface;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using ArgumentNullException = System.ArgumentNullException;
 
 namespace EShopApplication.Repository.Implementation;
@@ -9,50 +11,83 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 {
     private readonly ApplicationDbContext _dbContext;
     private DbSet<T> entities; //referencira kon konkretna tabela na bazata na podatoci - dali Products, dali SH..
-    string errorMessage = string.Empty;
 
-    public Repository(ApplicationDbContext dbContext)
+    public Repository(ApplicationDbContext dbContext, DbSet<T> entities)
     {
         _dbContext = dbContext;
-        entities = dbContext.Set<T>();
+        this.entities = entities;
     }
 
-    public IEnumerable<T> GetAll()
+    public T Insert(T entity)
     {
-        return entities.AsEnumerable();
-    }
-
-    public T Get(Guid? id)
-    {
-        return entities.SingleOrDefault(p => p.Id == id);
-    }
-
-    public void Insert(T entity)
-    {
-        if (entity == null)
-        {
-            throw new ArgumentNullException("entity");
-        }
-        entities.Add(entity);
+        _dbContext.Add(entity);
         _dbContext.SaveChanges();
+        
+        return entity;
     }
 
-    public void Update(T entity)
+    public T Update(T entity)
     {
-        if (entity == null)
-        {
-            throw new ArgumentNullException("entity");
-        }
-        entities.Update(entity);
+        _dbContext.Update(entity);
         _dbContext.SaveChanges();
+
+        return entity;
     }
 
-    public void Delete(T entity)
+    public T Delete(T entity)
     {
-        if (entity == null)
+        _dbContext.Remove(entity);
+        _dbContext.SaveChanges();
+
+        return entity;
+    }
+
+    public E? Get<E>(Expression<Func<T, E>> selector, 
+        Expression<Func<T, bool>>? predicate = null, 
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null, 
+        Func<IQueryable<T>, IIncludableQueryable<T, object>>? include = null)
+    {
+
+        IQueryable<T> query = entities;
+        if (predicate != null)
         {
-            throw new ArgumentNullException("entity");
+            query = query.Where(predicate);
         }
-        entities.Remove(entity);
+
+        if (include != null)
+        {
+            query = include(query);
+        }
+
+        if (orderBy != null)
+        {
+            return orderBy(query).Select(selector).FirstOrDefault();
+        }
+
+        return query.Select(selector).FirstOrDefault();
+    }
+
+    public IEnumerable<E> GetAll<E>(Expression<Func<T, E>> selector, 
+        Expression<Func<T, bool>>? predicate = null, Func<IQueryable<T>, 
+            IOrderedQueryable<T>>? orderBy = null, Func<IQueryable<T>, 
+            IIncludableQueryable<T, object>>? include = null)
+    {
+        IQueryable<T> query = entities;
+        if (predicate != null)
+        {
+            query = query.Where(predicate);
+        }
+
+        if (include != null)
+        {
+            query = include(query);
+        }
+
+        if (orderBy != null)
+        {
+            return orderBy(query).Select(selector).AsEnumerable();
+        }
+
+        return query.Select(selector).AsEnumerable();
     }
 }

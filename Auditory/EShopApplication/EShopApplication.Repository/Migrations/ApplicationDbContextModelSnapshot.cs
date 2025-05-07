@@ -17,10 +17,29 @@ namespace EShopApplication.Repository.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.8");
 
+            modelBuilder.Entity("EShopApplication.Domain.DTO.Order", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Orders");
+                });
+
             modelBuilder.Entity("EShopApplication.Domain.DomainModels.Product", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EShopApplicationUserId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProductDescription")
@@ -43,24 +62,53 @@ namespace EShopApplication.Repository.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EShopApplicationUserId");
+
                     b.ToTable("Products");
                 });
 
-            modelBuilder.Entity("EShopApplication.Domain.DomainModels.ProductInShoppingCart", b =>
+            modelBuilder.Entity("EShopApplication.Domain.DomainModels.ProductInOrder", b =>
                 {
-                    b.Property<Guid>("ProductID")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ShoppingCartID")
-                        .HasColumnType("TEXT");
-
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProductId")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("ProductID", "ShoppingCartID");
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductInOrders");
+                });
+
+            modelBuilder.Entity("EShopApplication.Domain.DomainModels.ProductInShoppingCart", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProductID")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("ShoppingCartID")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductID");
 
                     b.HasIndex("ShoppingCartID");
 
@@ -74,7 +122,6 @@ namespace EShopApplication.Repository.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("OwnerId")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -286,16 +333,51 @@ namespace EShopApplication.Repository.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("EShopApplication.Domain.DTO.Order", b =>
+                {
+                    b.HasOne("EShopApplication.Domain.IdentityModels.EShopApplicationUser", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId");
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("EShopApplication.Domain.DomainModels.Product", b =>
+                {
+                    b.HasOne("EShopApplication.Domain.IdentityModels.EShopApplicationUser", null)
+                        .WithMany("UserProducts")
+                        .HasForeignKey("EShopApplicationUserId");
+                });
+
+            modelBuilder.Entity("EShopApplication.Domain.DomainModels.ProductInOrder", b =>
+                {
+                    b.HasOne("EShopApplication.Domain.DTO.Order", "Order")
+                        .WithMany("ProductsInOrder")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EShopApplication.Domain.DomainModels.Product", "Product")
+                        .WithMany("ProductInOrders")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("EShopApplication.Domain.DomainModels.ProductInShoppingCart", b =>
                 {
-                    b.HasOne("EShopApplication.Domain.DomainModels.ShoppingCart", "ShoppingCart")
+                    b.HasOne("EShopApplication.Domain.DomainModels.Product", "Product")
                         .WithMany("ProductsInShoppingCarts")
                         .HasForeignKey("ProductID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EShopApplication.Domain.DomainModels.Product", "Product")
-                        .WithMany("ProductInShoppingCarts")
+                    b.HasOne("EShopApplication.Domain.DomainModels.ShoppingCart", "ShoppingCart")
+                        .WithMany("ProductsInShoppingCarts")
                         .HasForeignKey("ShoppingCartID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -309,9 +391,7 @@ namespace EShopApplication.Repository.Migrations
                 {
                     b.HasOne("EShopApplication.Domain.IdentityModels.EShopApplicationUser", "user")
                         .WithOne("ShoppingCart")
-                        .HasForeignKey("EShopApplication.Domain.DomainModels.ShoppingCart", "OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("EShopApplication.Domain.DomainModels.ShoppingCart", "OwnerId");
 
                     b.Navigation("user");
                 });
@@ -367,9 +447,16 @@ namespace EShopApplication.Repository.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EShopApplication.Domain.DTO.Order", b =>
+                {
+                    b.Navigation("ProductsInOrder");
+                });
+
             modelBuilder.Entity("EShopApplication.Domain.DomainModels.Product", b =>
                 {
-                    b.Navigation("ProductInShoppingCarts");
+                    b.Navigation("ProductInOrders");
+
+                    b.Navigation("ProductsInShoppingCarts");
                 });
 
             modelBuilder.Entity("EShopApplication.Domain.DomainModels.ShoppingCart", b =>
@@ -379,8 +466,9 @@ namespace EShopApplication.Repository.Migrations
 
             modelBuilder.Entity("EShopApplication.Domain.IdentityModels.EShopApplicationUser", b =>
                 {
-                    b.Navigation("ShoppingCart")
-                        .IsRequired();
+                    b.Navigation("ShoppingCart");
+
+                    b.Navigation("UserProducts");
                 });
 #pragma warning restore 612, 618
         }

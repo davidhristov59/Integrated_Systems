@@ -49,10 +49,8 @@ builder.Services.AddControllersWithViews(); //dodadeno
 //dodadeno za onion architecture 
 // Add scoped services
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-builder.Services.AddScoped(typeof(IUserRepository), typeof(UserRepository));
-
 builder.Services.AddTransient<IProductService, ProductService>();
-
+builder.Services.AddTransient<IShoppingCartService, ShoppingCartService>();
 
 var app = builder.Build();
 
@@ -73,7 +71,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication();  // 🔹 Added this line to fix the error
+app.UseAuthentication();  
 app.UseAuthorization();
 
 app.MapControllerRoute(
